@@ -45,6 +45,10 @@ public class Test {
 		// hash as key
 		byte[] cipher = encrypt("kalo", hash);
 		System.out.println(dcrypt(cipher, hash));
+		
+		
+		byte []tt=EncryptionDecryptionWrapper.encryptHmac("www.f.com", hash);
+		System.out.println(EncryptionDecryptionWrapper.validate("www.f.com", toHex(tt), hash));
 	}
 
 	private static byte[] encrypt(String message, byte[] hash)

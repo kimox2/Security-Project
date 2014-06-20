@@ -14,6 +14,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.spec.InvalidKeySpecException;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 
 public class DataBase {
@@ -21,6 +22,7 @@ public class DataBase {
 	private static byte[] salt;
 	private Table table;
 	private HashMap<String, Table> users = new HashMap<String, Table>();
+	
 
 	public DataBase() throws NoSuchAlgorithmException, IOException {
 		File f = new File("params.txt");
@@ -36,7 +38,7 @@ public class DataBase {
 			salt = temp.getBytes();
 		}
 		table = new Table();
-		loadTables();
+
 	}
 
 	private void saveTables() {
@@ -60,7 +62,8 @@ public class DataBase {
 
 		try {
 			// load users
-			FileInputStream streamIn = new FileInputStream("users.txt");
+			File f = new File("users.txt");
+			FileInputStream streamIn = new FileInputStream(f);
 			ObjectInputStream objectinputstream = new ObjectInputStream(
 					streamIn);
 			users = (HashMap<String, Table>) objectinputstream.readObject();
@@ -72,7 +75,7 @@ public class DataBase {
 			objectinputstream.close();
 		} catch (Exception e) {
 
-			e.printStackTrace();
+			// e.printStackTrace();
 		}
 	}
 
@@ -100,17 +103,17 @@ public class DataBase {
 		}
 		return null;
 	}
-	
-	private String passwordPadding(String password){
-		if(password.length() >=16)
+
+	private String passwordPadding(String password) {
+		if (password.length() >= 16)
 			return password;
-		
-		while(password.length()<16)
-			password +="$";
-		
+
+		while (password.length() < 16)
+			password += "$";
+
 		return password;
 	}
-	
+
 	private byte[] getHash(String password) throws NoSuchAlgorithmException,
 			InvalidKeySpecException {
 		for (Map.Entry<String, Table> e : users.entrySet()) {
@@ -149,9 +152,14 @@ public class DataBase {
 					String pair = reader.readLine();
 					String[] splits = pair.split(" ");
 					if (splits.length == 2) {
-						String paddedPass = passwordPadding(splits[1]);
-						String passEncrypted = EncryptionDecryptionWrapper.encrypt(paddedPass, userHash);
-						String domainMac = new String(EncryptionDecryptionWrapper.encryptHmac(splits[0], userHash));
+						String paddedPass = passwordPadding(splits[1])
+								+ splits[0];
+						Table.domains.add(splits[0]);
+						String passEncrypted = EncryptionDecryptionWrapper
+								.encrypt(paddedPass, userHash);
+						String domainMac =toHex(
+								EncryptionDecryptionWrapper.encryptHmac(
+										splits[0], userHash));
 						table.addPasword(domainMac, passEncrypted);
 					} else
 						System.out.println("Operation failed");
@@ -164,8 +172,11 @@ public class DataBase {
 					String splits[] = pair.split(" ");
 					if (splits.length == 2) {
 						String paddedPass = passwordPadding(splits[1]);
-						String passEncrypted = EncryptionDecryptionWrapper.encrypt(paddedPass, userHash);
-						String domainMac = new String(EncryptionDecryptionWrapper.encryptHmac(splits[0], userHash));
+						String passEncrypted = EncryptionDecryptionWrapper
+								.encrypt(paddedPass, userHash);
+						String domainMac = toHex(
+								EncryptionDecryptionWrapper.encryptHmac(
+										splits[0], userHash));
 						table.removePasword(domainMac, passEncrypted);
 					} else
 						System.out.println("Operation failed");
@@ -184,9 +195,11 @@ public class DataBase {
 						String newPaddedPass = passwordPadding(splits[2]);
 						String newPassEncrypted = EncryptionDecryptionWrapper
 								.encrypt(newPaddedPass, userHash);
-						
-						String domainMac = new String(EncryptionDecryptionWrapper.encryptHmac(splits[0], userHash));
-						
+
+						String domainMac = toHex(
+								EncryptionDecryptionWrapper.encryptHmac(
+										splits[0], userHash));
+
 						table.update(domainMac, oldPassEncrypted,
 								newPassEncrypted);
 					} else

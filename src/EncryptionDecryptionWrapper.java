@@ -5,6 +5,7 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.security.Security;
+import java.util.Arrays;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
@@ -21,7 +22,7 @@ public class EncryptionDecryptionWrapper {
 			NoSuchAlgorithmException, NoSuchPaddingException,
 			InvalidKeyException, UnsupportedEncodingException,
 			NoSuchProviderException, InvalidAlgorithmParameterException {
-		
+
 		SecretKeySpec skeySpec = new SecretKeySpec(hash, "AES");
 		GCMParameterSpec s = new GCMParameterSpec(128, hash);
 		// Get a cipher object.
@@ -32,18 +33,19 @@ public class EncryptionDecryptionWrapper {
 
 		// Gets the raw bytes to encrypt, UTF8 is needed for
 		// having a standard character set
-		byte[] stringBytes = message.getBytes("UTF8");
+		byte[] stringBytes = message.getBytes();
 		// encrypt using the cypher
 		byte[] raw = cipher.doFinal(stringBytes);
 
+		/*
+		 * cipher.init(Cipher.DECRYPT_MODE, skeySpec, s); byte[] text =
+		 * cipher.doFinal(raw);
+		 */
 
-		/*cipher.init(Cipher.DECRYPT_MODE, skeySpec, s);
-		byte[] text = cipher.doFinal(raw);*/
-		
-		return new String(raw);
+		return toHex(raw);
 
 	}
-	
+
 	public static String toHex(byte[] array) throws NoSuchAlgorithmException {
 		BigInteger bi = new BigInteger(1, array);
 		String hex = bi.toString(16);
@@ -54,35 +56,48 @@ public class EncryptionDecryptionWrapper {
 			return hex;
 		}
 	}
-	
-	public static String decrypt(String cryptedMessage, byte[] hash)
-	{
-		try{
+
+	public static String decrypt(byte[] cryptedMessage, byte[] hash) {
+		try {
 			SecretKeySpec skeySpec = new SecretKeySpec(hash, "AES");
 			GCMParameterSpec s = new GCMParameterSpec(128, hash);
 			// Get a cipher object.
 			Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
 			Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding", "BC");
 			cipher.init(Cipher.DECRYPT_MODE, skeySpec, s);
-	
+
 			// Gets the raw bytes to encrypt, UTF8 is needed for
 			// having a standard character set
-			byte[] stringBytes = cryptedMessage.getBytes();
+			byte[] stringBytes = cryptedMessage;
 			// encrypt using the cypher
 			byte[] raw = cipher.doFinal(stringBytes);
-			
+
 			return new String(raw);
-		}catch(Exception e){
+		} catch (Exception e) {
 			e.printStackTrace();
 			return null;
 		}
 	}
-	
-	public static byte[] encryptHmac(String domainName,byte[] hash) throws InvalidKeyException, NoSuchAlgorithmException{
-		  SecretKeySpec signingKey = new SecretKeySpec(hash, "HmacSHA1");
-		  Mac mac = Mac.getInstance("HmacSHA1");
-		  mac.init(signingKey);
-		  return (mac.doFinal(domainName.getBytes()));
-		 }
 
+	public static byte[] encryptHmac(String domainName, byte[] hash)
+			throws InvalidKeyException, NoSuchAlgorithmException {
+		SecretKeySpec signingKey = new SecretKeySpec(hash, "HmacSHA1");
+		Mac mac = Mac.getInstance("HmacSHA1");
+		mac.init(signingKey);
+		return mac.doFinal(domainName.getBytes());
+	}
+
+	public static boolean validate(String domain,String  hdomain, byte[] hash)
+			throws NoSuchAlgorithmException, InvalidKeyException {
+		byte[]domianHash=DataBase.fromHex(hdomain);
+		SecretKeySpec signingKey = new SecretKeySpec(hash, "HmacSHA1");
+		Mac mac = Mac.getInstance("HmacSHA1");
+		mac.init(signingKey);
+		byte[] testHash = mac.doFinal(domain.getBytes());
+		int diff=0;
+		for (int i = 0; i < testHash.length && i < domianHash.length; i++) {
+			diff |= domianHash[i] ^ testHash[i];
+		}
+		return diff == 0;
+	}
 }

@@ -1,4 +1,6 @@
 import java.io.Serializable;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -8,8 +10,10 @@ public class Table implements Serializable {
 
 	private static final long serialVersionUID = 1L;
 	public HashMap<String, HashSet<String>> table = new HashMap<String, HashSet<String>>();
+	public static HashSet<String> domains = new HashSet<String>();
 
 	public void addPasword(String domain, String password) {
+		
 		if (table.containsKey(domain))
 			table.get(domain).add(password);
 		else {
@@ -28,19 +32,29 @@ public class Table implements Serializable {
 		removePasword(domain, oldPass);
 		addPasword(domain, newPass);
 	}
-	
-	public void printTable(byte[] userHash)
-	{
-		for(Map.Entry<String, HashSet<String> > e : table.entrySet())
-		{
-			System.out.println("Domain: "+ e.getKey());
+
+	public String getDomainName(String hashDomain, byte[] userHash)
+			throws InvalidKeyException, NoSuchAlgorithmException {
+		for (String s : domains) {
+			if (EncryptionDecryptionWrapper.validate(s, hashDomain, userHash))
+				return s;
+		}
+		return null;
+
+	}
+
+	public void printTable(byte[] userHash) throws NoSuchAlgorithmException, InvalidKeyException {
+		for (Map.Entry<String, HashSet<String>> e : table.entrySet()) {
+			System.out.println("print domain name "+e.getKey());
+			String domainName=getDomainName(e.getKey(), userHash);
+			System.out.println("Domain: " + domainName);
 			HashSet<String> passwords = e.getValue();
 			System.out.println("Passwords: ");
-			for(String s : passwords)
-			{
-				String decryptedPass = EncryptionDecryptionWrapper.decrypt(s, userHash);
+			for (String s : passwords) {
+				String decryptedPass = EncryptionDecryptionWrapper.decrypt(
+						DataBase.fromHex(s), userHash);
 				decryptedPass = decryptedPass.replace("$", "");
-				System.out.println(decryptedPass);
+				System.out.println(decryptedPass.substring(0, decryptedPass.length()-domainName.length()));
 			}
 		}
 	}
