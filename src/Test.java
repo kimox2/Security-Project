@@ -45,10 +45,11 @@ public class Test {
 
 		// encrypt string based on the hash of the user password and using the
 		// hash as key
+		System.out.println(toHex(hash));
 		encrypt("kalo", hash);
 	}
 
-	private static String encrypt(String message, byte[] hash)
+	public static String encrypt(String message, byte[] hash)
 			throws IllegalBlockSizeException, BadPaddingException,
 			NoSuchAlgorithmException, NoSuchPaddingException,
 			InvalidKeyException, UnsupportedEncodingException,
@@ -69,8 +70,14 @@ public class Test {
 
 		// converts to base64 for easier display.
 		String hex = toHex(raw);
-		System.out.println("encryption key = hash + word= " + hex);
-
+		System.out.println("encryption key = hash + word= " + new String(raw));
+		return new String(raw);
+		/*cipher.init(Cipher.DECRYPT_MODE, skeySpec, s);
+		byte[] text = cipher.doFinal(raw);
+		String hex2 = toHex(text);
+		System.out.println(new String(text));*/
+		
+		
 		// GCMParameterSpec s = new GCMParameterSpec(32, hash);
 		// cipher.init("", s);
 		//
@@ -105,8 +112,6 @@ public class Test {
 		// System.err.println(ce);
 		// System.exit(1);
 		// }
-
-		return hex;
 	}
 
 	private static byte[] generateStorngPasswordHash(String password,

@@ -2,7 +2,6 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
@@ -10,18 +9,26 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
 import java.security.SecureRandom;
+import java.security.Security;
 import java.security.spec.InvalidKeySpecException;
 import java.util.HashMap;
 import java.util.Map;
 
+import javax.crypto.BadPaddingException;
+import javax.crypto.Cipher;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
+import javax.crypto.spec.GCMParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
+
 public class DataBase {
-
-	private class User {
-
-	}
 
 	private static byte[] salt;
 	private Table table;
@@ -105,11 +112,98 @@ public class DataBase {
 		return null;
 	}
 
+	private byte[] getHash(String password) throws NoSuchAlgorithmException,
+			InvalidKeySpecException {
+		for (Map.Entry<String, Table> e : users.entrySet()) {
+			byte[] hash = fromHex(e.getKey());
+			if (HashGenerator.validatePassword(password, hash, salt)) {
+				// System.out.println(e.getKey());
+				return hash;
+			}
+		}
+		return null;
+	}
+
 	public void addUser(byte[] hash) throws NoSuchAlgorithmException {
 		String sh = toHex(hash);
 		table = new Table();
 		users.put(sh, table);
 	}
+
+	public void userStart(byte[] userHash) {
+		while (true) {
+			try {
+				BufferedReader reader = new BufferedReader(
+						new InputStreamReader(System.in));
+
+				System.out.println("Enter number of operation you want:\n"
+						+ "1: Add a new Domain-Password pair\n"
+						+ "2: Delete a Domain-Password pair\n"
+						+ "3: Update a Domain-Password pair\n"
+						+ "4: List your Domain-Password pairs\n" + "5: Exit");
+				String op = reader.readLine();
+
+				if (op.equals("1")) {
+					System.out
+							.println("Enter your new Domain-Password pair seperated by a space\n"
+									+ "e.g www.facebook.com mypassword");
+					String pair = reader.readLine();
+					String[] splits = pair.split(" ");
+					if (splits.length == 2) {
+						String passEncrypted = EncryptionDecryptionWrapper.encrypt(splits[1], userHash);
+						table.addPasword(splits[0], passEncrypted);
+					} else
+						System.out.println("Operation failed");
+
+				} else if (op.equals("2")) {
+					System.out
+							.println("Enter your old Domain-Password pair to remove seperated by a space\n"
+									+ "e.g www.facebook.com mypassword");
+					String pair = reader.readLine();
+					String splits[] = pair.split(" ");
+					if (splits.length == 2) {
+						String passEncrypted = EncryptionDecryptionWrapper
+								.encrypt(splits[1], userHash);
+						table.removePasword(splits[0], passEncrypted);
+					} else
+						System.out.println("Operation failed");
+
+				} else if (op.equals("3")) {
+					System.out
+							.println("Enter your Domain, old Password and new Password to update seperated by spaces\n"
+									+ "e.g www.facebook.com myOldPassword myNewPassword");
+
+					String pair = reader.readLine();
+					String splits[] = pair.split(" ");
+					if (splits.length == 3) {
+						String oldPassEncrypted = EncryptionDecryptionWrapper
+								.encrypt(splits[1], userHash);
+						String newPassEncrypted = EncryptionDecryptionWrapper
+								.encrypt(splits[2], userHash);
+						table.update(splits[0], oldPassEncrypted,
+								newPassEncrypted);
+					} else
+						System.out.println("Operation failed");
+
+				} else if (op.equals("4")) {
+
+					table.printTable(userHash);
+
+				} else if (op.equals("5")) {
+					System.out.println("Return to main menu");
+					return;
+				} else {
+					System.out
+							.println("No operation matched, Enter operation number again");
+				}
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+
+		}
+	}
+
+	
 
 	public void start() throws IOException, NoSuchAlgorithmException,
 			InvalidKeySpecException {
@@ -119,12 +213,15 @@ public class DataBase {
 		String s = reader.readLine();
 		System.out.println("Enter user password");
 		String pass = reader.readLine();
+		loadTables();
 		if (s.equals("l")) {
-			loadTables();
+
 			table = validatePassword(pass);
-			if (table != null)
+			byte[] hash = getHash(pass);
+			if (table != null) {
 				System.out.println("Found");
-			else
+				userStart(hash);
+			} else
 				System.out.println("notFound");
 		} else {
 
