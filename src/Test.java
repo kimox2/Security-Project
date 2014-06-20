@@ -17,8 +17,6 @@ import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.SecretKeySpec;
 
-
-
 public class Test {
 	public static void main(String[] args) throws NoSuchAlgorithmException,
 			InvalidKeySpecException, InvalidKeyException,
@@ -45,73 +43,45 @@ public class Test {
 
 		// encrypt string based on the hash of the user password and using the
 		// hash as key
-		System.out.println(toHex(hash));
-		encrypt("kalo", hash);
+		byte[] cipher = encrypt("kalo", hash);
+		System.out.println(dcrypt(cipher, hash));
 	}
 
-	public static String encrypt(String message, byte[] hash)
+	private static byte[] encrypt(String message, byte[] hash)
 			throws IllegalBlockSizeException, BadPaddingException,
 			NoSuchAlgorithmException, NoSuchPaddingException,
 			InvalidKeyException, UnsupportedEncodingException,
 			NoSuchProviderException, InvalidAlgorithmParameterException {
-		
+
 		SecretKeySpec skeySpec = new SecretKeySpec(hash, "AES");
 		GCMParameterSpec s = new GCMParameterSpec(128, hash);
 		// Get a cipher object.
 		Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
 		Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding", "BC");
-		cipher.init(Cipher.ENCRYPT_MODE, skeySpec,s);
-
+		cipher.init(Cipher.ENCRYPT_MODE, skeySpec, s);
 		// Gets the raw bytes to encrypt, UTF8 is needed for
 		// having a standard character set
 		byte[] stringBytes = message.getBytes("UTF8");
 		// encrypt using the cypher
 		byte[] raw = cipher.doFinal(stringBytes);
+		return raw;
+	}
 
-		// converts to base64 for easier display.
-		String hex = toHex(raw);
-		System.out.println("encryption key = hash + word= " + new String(raw));
+	private static String dcrypt(byte[] password, byte[] hash)
+			throws IllegalBlockSizeException, BadPaddingException,
+			NoSuchAlgorithmException, NoSuchPaddingException,
+			InvalidKeyException, UnsupportedEncodingException,
+			NoSuchProviderException, InvalidAlgorithmParameterException {
+
+		SecretKeySpec skeySpec = new SecretKeySpec(hash, "AES");
+		GCMParameterSpec s = new GCMParameterSpec(128, hash);
+		// Get a cipher object.
+		Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
+		Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding", "BC");
+		cipher.init(Cipher.DECRYPT_MODE, skeySpec, s);
+		// encrypt using the cypher
+		byte[] raw = cipher.doFinal(password);
 		return new String(raw);
-		/*cipher.init(Cipher.DECRYPT_MODE, skeySpec, s);
-		byte[] text = cipher.doFinal(raw);
-		String hex2 = toHex(text);
-		System.out.println(new String(text));*/
-		
-		
-		// GCMParameterSpec s = new GCMParameterSpec(32, hash);
-		// cipher.init("", s);
-		//
-		// // If the GCMParameterSpec is needed again
-		// cipher.getParameters().getParameterSpec(GCMParameterSpec.class));
-		//
-		// cipher.updateAAD(arg0) // AAD
-		// cipher.update(...); // Multi-part update
-		// cipher.doFinal(...); // conclusion of operation
-
-		/*
-		 * This will use a supplied key, and encrypt the data This is the
-		 * equivalent of DES/CBC/PKCS5Padding
-		 */
-		// BlockCipher engine = new DESEngine();
-		// BufferedBlockCipher cipher = new PaddedBlockCipher(
-		// (BlockCipher) new GCMBlockCipher(engine) );
-		//
-		// byte[] key = hash;
-		// byte[] input = message.getBytes();
-		//
-		// cipher.init(true, new KeyParameter(key));
-		//
-		// byte[] cipherText = new byte[cipher.getOutputSize(input.length)];
-		//
-		// int outputLen = cipher.processBytes(input, 0, input.length,
-		// cipherText,
-		// 0);
-		// try {
-		// cipher.doFinal(cipherText, outputLen);
-		// } catch (CryptoException ce) {
-		// System.err.println(ce);
-		// System.exit(1);
-		// }
 	}
 
 	private static byte[] generateStorngPasswordHash(String password,
