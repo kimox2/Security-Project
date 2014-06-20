@@ -1,20 +1,31 @@
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 
 public class Table implements Serializable {
 
 	private static final long serialVersionUID = 1L;
-	public HashMap<String, ArrayList<String>> table = new HashMap<String, ArrayList<String>>();
+	public HashMap<String, HashSet<String>> table = new HashMap<String, HashSet<String>>();
 
 	public void addPasword(String domain, String password) {
 		if (table.containsKey(domain))
 			table.get(domain).add(password);
 		else {
-			ArrayList<String> passwords = new ArrayList<>();
+			HashSet<String> passwords = new HashSet<String>();
 			passwords.add(password);
 			table.put(domain, passwords);
 		}
+	}
+
+	public void removePasword(String domain, String password) {
+		if (table.containsKey(domain))
+			table.get(domain).remove(password);
+	}
+
+	public void update(String domain, String oldPass, String newPass) {
+		removePasword(domain, oldPass);
+		addPasword(domain, newPass);
 	}
 
 	public static void main(String[] args) {
