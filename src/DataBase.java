@@ -1,0 +1,165 @@
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.math.BigInteger;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+import java.security.spec.InvalidKeySpecException;
+import java.util.HashMap;
+import java.util.Map;
+
+public class DataBase {
+
+	private class User {
+
+	}
+
+	private static byte[] salt;
+	private Table table;
+	private HashMap<String, Table> users = new HashMap<String, Table>();
+
+	public DataBase() throws NoSuchAlgorithmException, IOException {
+		File f = new File("params.txt");
+		if (f.exists()) {
+			BufferedReader reader = new BufferedReader(new FileReader(f));
+			salt = reader.readLine().getBytes();
+			reader.close();
+		} else {
+			BufferedWriter writer = new BufferedWriter(new FileWriter(f));
+			String temp = getSalt();
+			writer.write(temp);
+			writer.close();
+			salt = temp.getBytes();
+		}
+		table = new Table();
+	}
+
+	private void saveTables() {
+		try {
+
+			FileOutputStream fout = new FileOutputStream("users.txt");
+			ObjectOutputStream oos = new ObjectOutputStream(fout);
+			oos.writeObject(users);
+			oos.close();
+
+			fout = new FileOutputStream("table.txt");
+			oos = new ObjectOutputStream(fout);
+			oos.writeObject(table);
+			oos.close();
+		} catch (Exception ex) {
+			ex.printStackTrace();
+		}
+	}
+
+	private void loadTables() {
+
+		try {
+			// load users
+			FileInputStream streamIn = new FileInputStream("users.txt");
+			ObjectInputStream objectinputstream = new ObjectInputStream(
+					streamIn);
+			users = (HashMap<String, Table>) objectinputstream.readObject();
+			objectinputstream.close();
+			// load table
+			streamIn = new FileInputStream("table.txt");
+			objectinputstream = new ObjectInputStream(streamIn);
+			table = (Table) objectinputstream.readObject();
+			objectinputstream.close();
+		} catch (Exception e) {
+
+			e.printStackTrace();
+		}
+	}
+
+	private static String getSalt() throws NoSuchAlgorithmException {
+		SecureRandom sr = SecureRandom.getInstance("SHA1PRNG");
+		byte[] salt = new byte[16];
+		sr.nextBytes(salt);
+		return salt.toString();
+	}
+
+	private byte[] authUser(String password) throws NoSuchAlgorithmException,
+			InvalidKeySpecException {
+		byte[] hash = HashGenerator.generateStorngPasswordHash(password, salt);
+		return hash;
+	}
+
+	private Table validatePassword(String password)
+			throws NoSuchAlgorithmException, InvalidKeySpecException {
+		for (Map.Entry<String, Table> e : users.entrySet()) {
+			byte[] hash = fromHex(e.getKey());
+			if (HashGenerator.validatePassword(password, hash, salt)) {
+				System.out.println(e.getKey());
+				return e.getValue();
+			}
+		}
+		return null;
+	}
+
+	public void addUser(byte[] hash) throws NoSuchAlgorithmException {
+		String sh = toHex(hash);
+		table = new Table();
+		users.put(sh, table);
+	}
+
+	public void start() throws IOException, NoSuchAlgorithmException,
+			InvalidKeySpecException {
+		BufferedReader reader = new BufferedReader(new InputStreamReader(
+				System.in));
+		System.out.println("create new user (n)/ login (l)");
+		String s = reader.readLine();
+		System.out.println("Enter user password");
+		String pass = reader.readLine();
+		if (s.equals("l")) {
+			loadTables();
+			table = validatePassword(pass);
+			if (table != null)
+				System.out.println("Found");
+			else
+				System.out.println("notFound");
+		} else {
+
+			byte hash[] = authUser(pass);
+			System.out.println(toHex(hash));
+			addUser(hash);
+			saveTables();
+			// System.out.println(hash.length);
+		}
+	}
+
+	public static String toHex(byte[] array) throws NoSuchAlgorithmException {
+		BigInteger bi = new BigInteger(1, array);
+		String hex = bi.toString(16);
+		int paddingLength = (array.length * 2) - hex.length();
+		if (paddingLength > 0) {
+			return String.format("%0" + paddingLength + "d", 0) + hex;
+		} else {
+			return hex;
+		}
+	}
+
+	public static byte[] fromHex(String hex) throws NoSuchAlgorithmException {
+		byte[] bytes = new byte[hex.length() / 2];
+		for (int i = 0; i < bytes.length; i++) {
+			bytes[i] = (byte) Integer.parseInt(hex.substring(2 * i, 2 * i + 2),
+					16);
+		}
+		return bytes;
+	}
+
+	public static void main(String[] args) throws NoSuchAlgorithmException,
+			InvalidKeySpecException, IOException {
+		DataBase b = new DataBase();
+		b.start();
+	}
+
+}
