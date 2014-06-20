@@ -9,6 +9,7 @@ import java.security.Security;
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.Mac;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
@@ -21,8 +22,6 @@ public class EncryptionDecryptionWrapper {
 			InvalidKeyException, UnsupportedEncodingException,
 			NoSuchProviderException, InvalidAlgorithmParameterException {
 		
-		System.out.println("passed to encrypt: "+ toHex(hash));
-		System.out.println("Size of hash "+hash.length);
 		SecretKeySpec skeySpec = new SecretKeySpec(hash, "AES");
 		GCMParameterSpec s = new GCMParameterSpec(128, hash);
 		// Get a cipher object.
@@ -68,7 +67,7 @@ public class EncryptionDecryptionWrapper {
 	
 			// Gets the raw bytes to encrypt, UTF8 is needed for
 			// having a standard character set
-			byte[] stringBytes = cryptedMessage.getBytes("UTF8");
+			byte[] stringBytes = cryptedMessage.getBytes();
 			// encrypt using the cypher
 			byte[] raw = cipher.doFinal(stringBytes);
 			
@@ -78,5 +77,12 @@ public class EncryptionDecryptionWrapper {
 			return null;
 		}
 	}
+	
+	public static byte[] encryptHmac(String domainName,byte[] hash) throws InvalidKeyException, NoSuchAlgorithmException{
+		  SecretKeySpec signingKey = new SecretKeySpec(hash, "HmacSHA1");
+		  Mac mac = Mac.getInstance("HmacSHA1");
+		  mac.init(signingKey);
+		  return (mac.doFinal(domainName.getBytes()));
+		 }
 
 }

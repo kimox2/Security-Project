@@ -9,24 +9,12 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
-import java.security.InvalidAlgorithmParameterException;
-import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
-import java.security.NoSuchProviderException;
 import java.security.SecureRandom;
-import java.security.Security;
 import java.security.spec.InvalidKeySpecException;
 import java.util.HashMap;
 import java.util.Map;
-
-import javax.crypto.BadPaddingException;
-import javax.crypto.Cipher;
-import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.NoSuchPaddingException;
-import javax.crypto.spec.GCMParameterSpec;
-import javax.crypto.spec.SecretKeySpec;
 
 public class DataBase {
 
@@ -48,6 +36,7 @@ public class DataBase {
 			salt = temp.getBytes();
 		}
 		table = new Table();
+		loadTables();
 	}
 
 	private void saveTables() {
@@ -162,7 +151,8 @@ public class DataBase {
 					if (splits.length == 2) {
 						String paddedPass = passwordPadding(splits[1]);
 						String passEncrypted = EncryptionDecryptionWrapper.encrypt(paddedPass, userHash);
-						table.addPasword(splits[0], passEncrypted);
+						String domainMac = new String(EncryptionDecryptionWrapper.encryptHmac(splits[0], userHash));
+						table.addPasword(domainMac, passEncrypted);
 					} else
 						System.out.println("Operation failed");
 
@@ -175,7 +165,8 @@ public class DataBase {
 					if (splits.length == 2) {
 						String paddedPass = passwordPadding(splits[1]);
 						String passEncrypted = EncryptionDecryptionWrapper.encrypt(paddedPass, userHash);
-						table.removePasword(splits[0], passEncrypted);
+						String domainMac = new String(EncryptionDecryptionWrapper.encryptHmac(splits[0], userHash));
+						table.removePasword(domainMac, passEncrypted);
 					} else
 						System.out.println("Operation failed");
 
@@ -193,7 +184,10 @@ public class DataBase {
 						String newPaddedPass = passwordPadding(splits[2]);
 						String newPassEncrypted = EncryptionDecryptionWrapper
 								.encrypt(newPaddedPass, userHash);
-						table.update(splits[0], oldPassEncrypted,
+						
+						String domainMac = new String(EncryptionDecryptionWrapper.encryptHmac(splits[0], userHash));
+						
+						table.update(domainMac, oldPassEncrypted,
 								newPassEncrypted);
 					} else
 						System.out.println("Operation failed");
@@ -215,8 +209,6 @@ public class DataBase {
 
 		}
 	}
-
-	
 
 	public void start() throws IOException, NoSuchAlgorithmException,
 			InvalidKeySpecException {
@@ -241,9 +233,9 @@ public class DataBase {
 			byte hash[] = authUser(pass);
 			System.out.println(toHex(hash));
 			addUser(hash);
-			saveTables();
 			// System.out.println(hash.length);
 		}
+		saveTables();
 	}
 
 	public static String toHex(byte[] array) throws NoSuchAlgorithmException {
